@@ -1,11 +1,11 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; mmlproc.scm
-;; 2014-11-1 v1.00
+;; 2014-11-3 v1.01
 ;;
 ;; ＜内容＞
-;;   MML(Music Macro Language)の文字列を解釈して、
-;;   PCMデータ(s16vector)に変換するためのモジュールです。
+;;   Gauche で MML(Music Macro Language) の文字列を解釈して、
+;;   PCMデータに変換するためのモジュールです。
 ;;
 ;; ＜インストール方法＞
 ;;   mmlproc.scm を Gauche でロード可能なフォルダにコピーします。
@@ -22,14 +22,19 @@
 ;;   サンプリングレートは変数 mml-sample-rate で取得できます。
 ;;   (現状は22050(Hz)に固定です)
 ;;
+;; ＜注意事項＞
+;;   (1)演奏1秒あたり22050個の音声データを計算するため けっこう時間がかかります。
+;;      (ほとんどの時間は add-note 手続きの do ループのところで費やしているので、
+;;       この部分を例えばC言語で計算するようにしたら 速くなるかもしれない)
+;;
 (define-module mmlproc
-  (use gauche.sequence)
+  (use gauche.sequence)    ; find-index用
   (use gauche.uvector)
   (use math.const)
   (use math.mt-random)
   (use srfi-13)            ; string-downcase用
   (use binary.pack)
-  (export 
+  (export
     mml-sample-rate
     mml->pcm
     write-wav))
@@ -90,92 +95,90 @@
     (let ((rtime    0)    ; 実時間(sec)
           (poslast  0)    ; 音声データ位置保存用(単位は絶対音長(4分音符が48になる))
           (tempo    120)  ; テンポ(1分間に演奏する4分音符の数)
-          (tchg     #f)
-          (tchglast #f)
-          (tlist    tempolist))
-      (until (null? tlist)
-        (set! tchglast tchg)
-        (set! tchg     (car tlist))
-        (set! tlist    (cdr tlist))
-        (if (>= (~ tchg 'pos) pos)
-          (set! tlist '())
-          (if (null? tlist)
-            (set! tchglast tchg))))
+          (tchglast #f))
+      ;; 直前のテンポ変更位置を探す
+      (set! tchglast (find (lambda (tchg) (< (~ tchg 'pos) pos)) (reverse tempolist)))
       (when tchglast
         (set! rtime   (~ tchglast 'rtime))
         (set! poslast (~ tchglast 'pos))
         (set! tempo   (~ tchglast 'val)))
+      ;; 実時間を計算
       (set! rtime (+ rtime (/. (/. (* (- pos poslast) 60) 48) tempo)))
       rtime))
+
+  ;; 音色生成関数(内部処理用)
+  (define (make-progfunc prog)
+    (case prog
+      ;; 方形波
+      ((0)   (lambda (t phase) (if (> (sin phase) 0) 1 -1)))
+      ;; 正弦波
+      ((1)   (lambda (t phase) (sin phase)))
+      ;; のこぎり波
+      ((2)   (lambda (t phase) (- (* (/. (mod phase (* 2 pi)) (* 2 pi)) 2) 1)))
+      ;; 三角波
+      ((3)   (lambda (t phase) (/. (asin (sin phase)) (/. pi 2))))
+      ;; ホワイトノイズ
+      ((4)   (lambda (t phase) (- (* (mt-random-real0 mr-twister) 2) 1)))
+      ;; ピアノ(仮)
+      ((500) (lambda (t phase) (* 1.3 (if (> (sin phase) 0) 1 -1) (exp (* -5 t)))))
+      ;; オルガン(仮)
+      ((501) (lambda (t phase) (* (if (> (sin phase) 0) 1 -1) 13 t (exp (* -5 t)))))
+      ;; ギター(仮)
+      ((502) (lambda (t phase) (* 5 (cos (+ phase (cos (/. phase 2)) (cos (* phase 2)))) (exp (* -5 t)))))
+      ;; 方形波
+      (else  (lambda (t phase) (if (> (sin phase) 0) 1 -1)))))
 
   ;; 音符追加(内部処理用)
   (define (add-note ch note nlength1 nlength2 prog volume pass-no)
     (when (= pass-no 2)
-      (let ((rtime1   0)  ; 音符開始位置の実時間(sec)
-            (rtime2   0)  ; 音符終了位置の実時間(sec)
-            (nlen1    0)  ; 音長  (単位は実時間(sec)xサンプリングレート(Hz))
-            (nlen2    0)  ; 発音長(単位は実時間(sec)xサンプリングレート(Hz))
-            (freq     0)  ; 音符の周波数(Hz)
-            (t        0)  ; 時間(sec)
-            (phase    0)  ; 位相(ラジアン)
-            (wave     0)  ; 波形(-1～1まで)
-            (fade     0)  ; フェードアウト割合(0-1まで)
-            (phase-c  0)  ; 定数キャッシュ用
-            (amp-c    0)  ; 定数キャッシュ用
-            (pos-int  0)) ; 定数キャッシュ用
+      (let ((rtime1   0)   ; 音符開始位置の実時間(sec)
+            (rtime2   0)   ; 音符終了位置の実時間(sec)
+            (nlen1    0)   ; 音長  (単位は実時間(sec)xサンプリングレート(Hz))
+            (nlen2    0)   ; 発音長(単位は実時間(sec)xサンプリングレート(Hz))
+            (freq     0)   ; 音符の周波数(Hz)
+            ;(t        0)   ; 時間(sec)
+            ;(phase    0)   ; 位相(ラジアン)
+            ;(wave     0)   ; 波形(-1～1まで)
+            ;(fade     0)   ; フェードアウト割合(0-1まで)
+            (phase-c  0)   ; 定数キャッシュ用
+            (amp-c    0)   ; 定数キャッシュ用
+            (pos-int  0)   ; 定数キャッシュ用
+            (rsample  0)   ; 定数キャッシュ用
+            (progfunc #f)) ; 音色生成関数
         ;; 音長計算
         ;; (音符の途中でテンポが変わることを考慮する)
-        (set! rtime1  (get-real-time (~ pos ch)))
-        (set! rtime2  (get-real-time (+ (~ pos ch) nlength1)))
-        (set! nlen1   (* sample-rate (- rtime2 rtime1)))
+        (set! rtime1   (get-real-time (~ pos ch)))
+        (set! rtime2   (get-real-time (+ (~ pos ch) nlength1)))
+        (set! nlen1    (* sample-rate (- rtime2 rtime1)))
         ;; 発音長計算
-        (set! nlen2   (if (> nlength1 0)
-                        (/. (* nlen1 nlength2) nlength1)
-                        0))
+        (set! nlen2    (if (> nlength1 0)
+                         (/. (* nlen1 nlength2) nlength1)
+                         0))
         ;; 音符の周波数計算
-        (set! freq    (* 13.75 (expt 2 (/. (- note 9) 12))))
+        (set! freq     (* 13.75 (expt 2 (/. (- note 9) 12))))
         ;; 定数を先に計算しておく
-        (set! phase-c (* 2 pi freq))
-        (set! amp-c   (/. (/. (* 32767 volume) 127) max-ch))
-        (set! pos-int (floor->exact (* sample-rate rtime1)))
+        (set! phase-c  (* 2 pi freq))
+        (set! amp-c    (/. (/. (* 32767 volume) 127) max-ch))
+        (set! pos-int  (floor->exact (* sample-rate rtime1)))
         ;(print pos-int " " (s16vector-length pcmdata))
+        (set! rsample  (/. 1 sample-rate))
+        ;; 音色生成関数を取得
+        (set! progfunc (make-progfunc prog))
         ;; 音声データの値を計算
-        (do ((i 0 (+ i 1)))
+        (do ((i 0 (+ i 1))
+             (t 0 (+ t rsample))                         ; 時間(sec)
+             (pos-int pos-int (+ pos-int 1)))
             ((>= i nlen1) #f)
-          (set! t     (/. i sample-rate))
-          (set! phase (* phase-c t))
-          (case prog
-            ;; 方形波
-            ((0)   (set! wave (if (> (sin phase) 0) 1 -1)))
-            ;; 正弦波
-            ((1)   (set! wave (sin phase)))
-            ;; のこぎり波
-            ((2)   (set! wave (- (* (/. (mod phase (* 2 pi)) (* 2 pi)) 2) 1)))
-            ;; 三角波
-            ((3)   (set! wave (/. (asin (sin phase)) (/. pi 2))))
-            ;; ホワイトノイズ
-            ((4)   (set! wave (- (* (mt-random-real0 mr-twister) 2) 1)))
-            ;; ピアノ(仮)
-            ((500) (set! wave (* 1.3 (if (> (sin phase) 0) 1 -1) (exp (* -5 t)))))
-            ;; オルガン(仮)
-            ((501) (set! wave (* (if (> (sin phase) 0) 1 -1) 13 t (exp (* -5 t)))))
-            ;; ギター(仮)
-            ((502) (set! wave (* 5 (cos (+ phase (cos (/. phase 2)) (cos (* phase 2)))) (exp (* -5 t)))))
-            ;; 方形波
-            (else  (set! wave (if (> (sin phase) 0) 1 -1))))
-          (set! wave (clamp wave -1 1))
-          (if (= nlen2 0)
-            (set! fade 1)
-            (cond ((< (/. i nlen2) 0.8)
-                   (set! fade 1))
-                  ((< i nlen2)
-                   (set! fade (/. (- 1 (/. i nlen2)) (- 1 0.8))))
-                  (else
-                   (set! fade 0))))
-          ;; (ここは実行回数が多いので、万能アクセサだと遅いみたい(4秒→1秒))
-          ;(set! (~ pcmdata pos-int) (+ (~ pcmdata pos-int) (floor->exact (* amp-c wave fade))))
-          (s16vector-set! pcmdata pos-int (+ (s16vector-ref pcmdata pos-int) (floor->exact (* amp-c wave fade))))
-          (inc! pos-int))))
+          (let* ((phase (* phase-c t))                   ; 位相(ラジアン)
+                 (wave  (clamp (progfunc t phase) -1 1)) ; 波形(-1～1まで)
+                 (fade  (cond ((= nlen2 0)         1)    ; フェードアウト割合(0-1まで)
+                              ((< i (* 0.8 nlen2)) 1)
+                              ((< i nlen2)         (* 5 (- 1 (/. i nlen2))))
+                              (else                0))))
+            ;; (ここは実行回数が多いので、万能アクセサだと遅いみたい(4秒→1秒))
+            ;(set! (~ pcmdata pos-int) (+ (~ pcmdata pos-int) (floor->exact (* amp-c wave fade))))
+            (s16vector-set! pcmdata pos-int (+ (s16vector-ref pcmdata pos-int) (floor->exact (* amp-c wave fade))))
+            ))))
     ;; 音声データ位置を計算
     (set! (~ pos ch) (+ (~ pos ch) nlength1)))
 
@@ -249,32 +252,32 @@
                (set! note (+ note (* (+ (~ octave ch) 1) 12)))
                ;; シャープ、フラット、ナチュラルがあるときはそれを計算
                (case (~ mmlvec i)
-                ((#\+ #\#) (inc! i) (inc! note))
-                ((#\-)     (inc! i) (dec! note))
-                ((#\= #\*) (inc! i))
-                ;; その他のときは調号の分を計算
-                (else
-                 (let1 val (find-index (cut eqv? c <>) #(#\c #\d #\e #\f #\g #\a #\b))
-                   (if val (set! note (+ note (~ sharp ch val)))))))
+                 ((#\+ #\#) (inc! i) (inc! note))
+                 ((#\-)     (inc! i) (dec! note))
+                 ((#\= #\*) (inc! i))
+                 ;; その他のときは調号の分を計算
+                 (else
+                  (let1 val (find-index (cut eqv? c <>) #(#\c #\d #\e #\f #\g #\a #\b))
+                    (if val (set! note (+ note (~ sharp ch val)))))))
                ;; 音の高さ範囲チェック
                (set! note (clamp note 0 127))))
            ;; 音長の計算
            (case (~ mmlvec i)
-            ;; 絶対音長があるときは絶対音長を取得
-            ((#\%)
-             (inc! i)
-             (receive (val i2) (get-value mmlvec i 0)
-               (set! i i2)
-               (set! nlength1 (clamp val 0 1000))))
-            (else
-             ;; 音長があるときは音長を取得
-             (receive (val i2) (get-value mmlvec i -1)
-               (set! i i2)
-               (if (> val 1000) (set! val 1000))
-               (cond
-                ((= val 0) (set! nlength1 0))
-                ((> val 0) (set! nlength1 (/. (* 48 4) val)))
-                (else      (set! nlength1 (~ alength ch)))))))
+             ;; 絶対音長があるときは絶対音長を取得
+             ((#\%)
+              (inc! i)
+              (receive (val i2) (get-value mmlvec i 0)
+                (set! i i2)
+                (set! nlength1 (clamp val 0 1000))))
+             (else
+              ;; 音長があるときは音長を取得
+              (receive (val i2) (get-value mmlvec i -1)
+                (set! i i2)
+                (if (> val 1000) (set! val 1000))
+                (cond
+                 ((= val 0) (set! nlength1 0))
+                 ((> val 0) (set! nlength1 (/. (* 48 4) val)))
+                 (else      (set! nlength1 (~ alength ch)))))))
            ;; 付点があるときは音長を1.5倍
            (when (eqv? (~ mmlvec i) #\.)
              (inc! i)
@@ -294,66 +297,66 @@
              (set! (~ tie ch 'note)   0)
              (set! (~ tie ch 'length) 0))
            (case (~ mmlvec i)
-            ;; タイまたはスラーのとき
-            ((#\&)
-             (inc! i)
-             ;; タイのフラグを立てて、処理は次回にまわす
-             (set! (~ tie ch 'flag)   #t)
-             (if (> note 0) (set! (~ tie ch 'note) note))
-             (set! (~ tie ch 'length) (+ (~ tie ch 'length) nlength1)))
-            (else
-             ;; タイの処理
-             (when (~ tie ch 'flag)
-               ;; 音符を確定する
-               (set! note (~ tie ch 'note))
-               (set! nlength1 (+ (~ tie ch 'length) nlength1))
-               (set! nlength2 (+ (~ tie ch 'length) nlength2))
-               ;; タイを解除
-               (set! (~ tie ch 'flag)   #f)
-               (set! (~ tie ch 'note)   0)
-               (set! (~ tie ch 'length) 0))
-             ;; 音符または休符を追加
-             (if (> note 0)
-               ;; 音符追加
-               (add-note ch note nlength1 nlength2 (~ prog ch) (~ volume ch) pass-no)
-               ;; 休符追加
-               (add-rest ch nlength1)))))
+             ;; タイまたはスラーのとき
+             ((#\&)
+              (inc! i)
+              ;; タイのフラグを立てて、処理は次回にまわす
+              (set! (~ tie ch 'flag)   #t)
+              (if (> note 0) (set! (~ tie ch 'note) note))
+              (set! (~ tie ch 'length) (+ (~ tie ch 'length) nlength1)))
+             (else
+              ;; タイの処理
+              (when (~ tie ch 'flag)
+                ;; 音符を確定する
+                (set! note (~ tie ch 'note))
+                (set! nlength1 (+ (~ tie ch 'length) nlength1))
+                (set! nlength2 (+ (~ tie ch 'length) nlength2))
+                ;; タイを解除
+                (set! (~ tie ch 'flag)   #f)
+                (set! (~ tie ch 'note)   0)
+                (set! (~ tie ch 'length) 0))
+              ;; 音符または休符を追加
+              (if (> note 0)
+                ;; 音符追加
+                (add-note ch note nlength1 nlength2 (~ prog ch) (~ volume ch) pass-no)
+                ;; 休符追加
+                (add-rest ch nlength1)))))
 
           ;; 拡張コマンドのとき
           ((#\!)
            (set! c2 (~ mmlvec i))
            (case c2
-            ;; チャンネル切替(0-(MAX_CH-1))
-            ((#\c)
-             (inc! i)
-             (receive (val i2) (get-value mmlvec i 0)
-               (set! i i2)
-               (set! ch (clamp val 0 (- max-ch 1)))))
-            ;; オクターブ記号変更(トグル)
-            ((#\o)
-             (inc! i)
-             (set! octchg (if (= octchg 0) 1 0)))
-            ;; ボリューム最大値(1-1000)
-            ((#\v)
-             (inc! i)
-             (receive (val i2) (get-value mmlvec i 0)
-               (set! i i2)
-               (set! volmax (clamp val 1 1000))))
-            ;; 調号指定
-            ((#\+ #\# #\- #\= #\*)
-             (inc! i)
-             (let ((done #f)
-                   (val  0))
-               (while (not done)
-                 (set! val (find-index (cut eqv? (~ mmlvec i) <>) #(#\c #\d #\e #\f #\g #\a #\b)))
-                 (if val
-                   (begin
-                     (inc! i)
-                     (case c2
-                      ((#\+ #\#) (set! (~ sharp ch val) 1))   ; シャープ
-                      ((#\-)     (set! (~ sharp ch val) -1))  ; フラット
-                      ((#\= #\*) (set! (~ sharp ch val) 0)))) ; ナチュラル
-                   (set! done #t)))))))
+             ;; チャンネル切替(0-(MAX_CH-1))
+             ((#\c)
+              (inc! i)
+              (receive (val i2) (get-value mmlvec i 0)
+                (set! i i2)
+                (set! ch (clamp val 0 (- max-ch 1)))))
+             ;; オクターブ記号変更(トグル)
+             ((#\o)
+              (inc! i)
+              (set! octchg (if (= octchg 0) 1 0)))
+             ;; ボリューム最大値(1-1000)
+             ((#\v)
+              (inc! i)
+              (receive (val i2) (get-value mmlvec i 0)
+                (set! i i2)
+                (set! volmax (clamp val 1 1000))))
+             ;; 調号指定
+             ((#\+ #\# #\- #\= #\*)
+              (inc! i)
+              (let ((done #f)
+                    (val  0))
+                (while (not done)
+                  (set! val (find-index (cut eqv? (~ mmlvec i) <>) #(#\c #\d #\e #\f #\g #\a #\b)))
+                  (if val
+                    (begin
+                      (inc! i)
+                      (case c2
+                        ((#\+ #\#) (set! (~ sharp ch val) 1))   ; シャープ
+                        ((#\-)     (set! (~ sharp ch val) -1))  ; フラット
+                        ((#\= #\*) (set! (~ sharp ch val) 0)))) ; ナチュラル
+                    (set! done #t)))))))
 
           ;; 通常コマンドのとき
           ;; テンポ切替(20-1200)
@@ -385,19 +388,19 @@
           ;; 音長指定(0-1000)
           ((#\l)
            (case (~ mmlvec i)
-            ;; 絶対音長があるときは絶対音長を取得
-            ((#\%)
-             (inc! i)
-             (receive (val i2) (get-value mmlvec i 0)
-               (set! i i2)
-               (set! (~ alength ch) (clamp val 0 1000))))
-            (else
-             ;; 音長があるときは音長を取得
-             (receive (val i2) (get-value mmlvec i 0)
-               (set! i i2)
-               (if (= val 0)
-                 (set! (~ alength ch) 0)
-                 (set! (~ alength ch) (/. (* 48 4) (clamp val 0 1000)))))))
+             ;; 絶対音長があるときは絶対音長を取得
+             ((#\%)
+              (inc! i)
+              (receive (val i2) (get-value mmlvec i 0)
+                (set! i i2)
+                (set! (~ alength ch) (clamp val 0 1000))))
+             (else
+              ;; 音長があるときは音長を取得
+              (receive (val i2) (get-value mmlvec i 0)
+                (set! i i2)
+                (if (= val 0)
+                  (set! (~ alength ch) 0)
+                  (set! (~ alength ch) (/. (* 48 4) (clamp val 0 1000)))))))
            ;; 付点があるときは音長を1.5倍
            (when (eqv? (~ mmlvec i) #\.)
              (inc! i)
@@ -433,8 +436,8 @@
            ;; ループ有無のチェック
            (if (not (null? (~ loop ch 'begin)))
              (let1 loop-count (car (~ loop ch 'counter))
-               ;; ループ最終回のとき
                (cond
+                ;; ループ最終回のとき
                 ((= loop-count -2)
                  ;; ループ終了位置へジャンプ
                  (set! i (car (~ loop ch 'end)))
@@ -462,8 +465,8 @@
            ;; ループ有無のチェック
            (if (not (null? (~ loop ch 'begin)))
              (let1 loop-count (car (~ loop ch 'counter))
-               ;; ループ最終回のとき
                (cond
+                ;; ループ最終回のとき
                 ((= loop-count -2)
                  ;; ループ終了位置へジャンプ
                  (set! i (car (~ loop ch 'end)))

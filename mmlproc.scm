@@ -1,11 +1,12 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; mmlproc.scm
-;; 2014-11-3 v1.01
+;; 2014-11-3 v1.02
 ;;
 ;; ＜内容＞
 ;;   Gauche で MML(Music Macro Language) の文字列を解釈して、
 ;;   PCMデータに変換するためのモジュールです。
+;;   結果をwavファイルとして出力可能です。
 ;;
 ;; ＜インストール方法＞
 ;;   mmlproc.scm を Gauche でロード可能なフォルダにコピーします。
@@ -19,8 +20,8 @@
 ;;                                       ; PCMデータ(s16vector)をwavファイルに
 ;;                                       ; 変換して出力ポートに書き出します
 ;;
-;;   サンプリングレートは変数 mml-sample-rate で取得できます。
-;;   (現状は22050(Hz)に固定です)
+;;   サンプリングレートは変数 mml-sample-rate で取得/設定できます。
+;;   (デフォルトは22050(Hz)です)
 ;;
 ;; ＜注意事項＞
 ;;   (1)演奏1秒あたり22050個の音声データを計算するため けっこう時間がかかります。
@@ -35,7 +36,7 @@
   (use srfi-13)            ; string-downcase用
   (use binary.pack)
   (export
-    mml-sample-rate
+    (rename sample-rate mml-sample-rate)
     mml->pcm
     write-wav))
 (select-module mmlproc)
@@ -43,7 +44,6 @@
 ;; 定数
 (define max-ch 8)          ; 最大チャンネル数(増やすと音が小さくなる)
 (define sample-rate 22050) ; サンプリングレート(Hz)
-(define mml-sample-rate sample-rate) ; 公開用
 
 ;; 乱数
 (define mr-twister (make <mersenne-twister> :seed (sys-time)))

@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; mmlprocのテスト2
-;; 2014-11-2
+;; 2014-11-3
 ;;
 (add-load-path "." :relative)
 (use gauche.uvector)
@@ -35,6 +35,7 @@
 (test* "loop1"    (undefined) (wavmake "testdata15.wav" "[ abc : de ]2"))
 (test* "loop2"    (undefined) (wavmake "testdata16.wav" "[cd:e [fg]3 ]"))
 (test* "tempo2"   (undefined) (wavmake "testdata17.wav" "!c0 @500 [     c t71 defg]3  !c1 @0   [t120 a     a2.b]3"))
+(test* "chord"    (undefined) (wavmake "testdata18.wav" "!c0v127c !c1v127d !c2v127e !c3v127f !c4v127g !c5v127a !c6v127b !c7v127>c<"))
 
 (test-end)
 

@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; mmlproc.scm
-;; 2014-11-3 v1.02
+;; 2014-11-3 v1.03
 ;;
 ;; ＜内容＞
 ;;   Gauche で MML(Music Macro Language) の文字列を解釈して、
@@ -29,21 +29,21 @@
 ;;       この部分を例えばC言語で計算するようにしたら 速くなるかもしれない)
 ;;
 (define-module mmlproc
-  (use gauche.sequence)    ; find-index用
+  (use gauche.sequence) ; find-index用
   (use gauche.uvector)
   (use math.const)
   (use math.mt-random)
-  (use srfi-13)            ; string-downcase用
+  (use srfi-13)         ; string-downcase用
   (use binary.pack)
   (export
-    (rename sample-rate mml-sample-rate)
+    mml-sample-rate
     mml->pcm
     write-wav))
 (select-module mmlproc)
 
 ;; 定数
-(define max-ch 8)          ; 最大チャンネル数(増やすと音が小さくなる)
-(define sample-rate 22050) ; サンプリングレート(Hz)
+(define max-ch 8)              ; 最大チャンネル数(増やすと音が小さくなる)
+(define mml-sample-rate 22050) ; サンプリングレート(Hz)
 
 ;; 乱数
 (define mr-twister (make <mersenne-twister> :seed (sys-time)))
@@ -149,7 +149,7 @@
         ;; (音符の途中でテンポが変わることを考慮する)
         (set! rtime1   (get-real-time (~ pos ch)))
         (set! rtime2   (get-real-time (+ (~ pos ch) nlength1)))
-        (set! nlen1    (* sample-rate (- rtime2 rtime1)))
+        (set! nlen1    (* mml-sample-rate (- rtime2 rtime1)))
         ;; 発音長計算
         (set! nlen2    (if (> nlength1 0)
                          (/. (* nlen1 nlength2) nlength1)
@@ -159,9 +159,9 @@
         ;; 定数を先に計算しておく
         (set! phase-c  (* 2 pi freq))
         (set! amp-c    (/. (/. (* 32767 volume) 127) max-ch))
-        (set! pos-int  (floor->exact (* sample-rate rtime1)))
+        (set! pos-int  (floor->exact (* mml-sample-rate rtime1)))
         ;(print pos-int " " (s16vector-length pcmdata))
-        (set! rsample  (/. 1 sample-rate))
+        (set! rsample  (/. 1 mml-sample-rate))
         ;; 音色生成関数を取得
         (set! progfunc (make-progfunc prog))
         ;; 音声データの値を計算
@@ -542,11 +542,12 @@
   ;; 実時間テーブル作成
   (make-time-table)
   ;; 音声バッファの確保
+  ;; (一番長いチャンネルのサイズを全体のサイズとする)
   (let ((pcmlen    0)
         (chdatalen 0))
     (do ((i 0 (+ i 1)))
         ((>= i max-ch) #f)
-      (set! chdatalen (floor->exact (* sample-rate (get-real-time (~ pos i)))))
+      (set! chdatalen (floor->exact (* mml-sample-rate (get-real-time (~ pos i)))))
       (if (< pcmlen chdatalen) (set! pcmlen chdatalen)))
     (inc! pcmlen) ; 誤差対策で+1
     (set! pcmdata (make-s16vector pcmlen 0)))
@@ -568,8 +569,8 @@
               16                                      ; fmtチャンクのサイズ(byte)
               1                                       ; 種別(=1:リニアPCM)
               1                                       ; CH数(=1:モノラル, =2:ステレオ)
-              sample-rate                             ; サンプリングレート(Hz)
-              (* 2 sample-rate)                       ; データ速度(byte/sec)
+              mml-sample-rate                         ; サンプリングレート(Hz)
+              (* 2 mml-sample-rate)                   ; データ速度(byte/sec)
               2                                       ; ブロックサイズ(1サンプルのバイト数xCH数)
               16                                      ; 1サンプルのビット数(=8:8bit, =16:16bit)
               "data"                                  ; dataチャンク

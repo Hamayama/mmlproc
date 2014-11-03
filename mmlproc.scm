@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; mmlproc.scm
-;; 2014-11-3 v1.03
+;; 2014-11-3 v1.04
 ;;
 ;; ＜内容＞
 ;;   Gauche で MML(Music Macro Language) の文字列を解釈して、
@@ -114,9 +114,9 @@
       ;; 正弦波
       ((1)   (lambda (t phase) (sin phase)))
       ;; のこぎり波
-      ((2)   (lambda (t phase) (- (* (/. (mod phase (* 2 pi)) (* 2 pi)) 2) 1)))
+      ((2)   (lambda (t phase) (- (* (mod phase (* 2 pi)) 1/pi) 1)))
       ;; 三角波
-      ((3)   (lambda (t phase) (/. (asin (sin phase)) (/. pi 2))))
+      ((3)   (lambda (t phase) (* 2 (asin (sin phase)) 1/pi)))
       ;; ホワイトノイズ
       ((4)   (lambda (t phase) (- (* (mt-random-real0 mr-twister) 2) 1)))
       ;; ピアノ(仮)
@@ -124,7 +124,7 @@
       ;; オルガン(仮)
       ((501) (lambda (t phase) (* (if (> (sin phase) 0) 1 -1) 13 t (exp (* -5 t)))))
       ;; ギター(仮)
-      ((502) (lambda (t phase) (* 5 (cos (+ phase (cos (/. phase 2)) (cos (* phase 2)))) (exp (* -5 t)))))
+      ((502) (lambda (t phase) (* 5 (cos (+ phase (cos (* phase 0.5)) (cos (* phase 2)))) (exp (* -5 t)))))
       ;; 方形波
       (else  (lambda (t phase) (if (> (sin phase) 0) 1 -1)))))
 
@@ -144,6 +144,7 @@
             (amp-c    0)   ; 定数キャッシュ用
             (pos-int  0)   ; 定数キャッシュ用
             (rsample  0)   ; 定数キャッシュ用
+            (rnlen2   0)   ; 定数キャッシュ用
             (progfunc #f)) ; 音色生成関数
         ;; 音長計算
         ;; (音符の途中でテンポが変わることを考慮する)
@@ -162,18 +163,19 @@
         (set! pos-int  (floor->exact (* mml-sample-rate rtime1)))
         ;(print pos-int " " (s16vector-length pcmdata))
         (set! rsample  (/. 1 mml-sample-rate))
+        (set! rnlen2   (/. 1 nlen2))
         ;; 音色生成関数を取得
         (set! progfunc (make-progfunc prog))
         ;; 音声データの値を計算
         (do ((i 0 (+ i 1))
-             (t 0 (+ t rsample))                         ; 時間(sec)
              (pos-int pos-int (+ pos-int 1)))
             ((>= i nlen1) #f)
-          (let* ((phase (* phase-c t))                   ; 位相(ラジアン)
+          (let* ((t     (* i rsample))                   ; 時間(sec)
+                 (phase (* phase-c t))                   ; 位相(ラジアン)
                  (wave  (clamp (progfunc t phase) -1 1)) ; 波形(-1～1まで)
                  (fade  (cond ((= nlen2 0)         1)    ; フェードアウト割合(0-1まで)
                               ((< i (* 0.8 nlen2)) 1)
-                              ((< i nlen2)         (* 5 (- 1 (/. i nlen2))))
+                              ((< i nlen2)         (* 5 (- 1 (* i rnlen2))))
                               (else                0))))
             ;; (ここは実行回数が多いので、万能アクセサだと遅いみたい(4秒→1秒))
             ;(set! (~ pcmdata pos-int) (+ (~ pcmdata pos-int) (floor->exact (* amp-c wave fade))))

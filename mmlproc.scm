@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; mmlproc.scm
-;; 2014-11-5 v1.05
+;; 2014-11-6 v1.06
 ;;
 ;; ＜内容＞
 ;;   Gauche で MML(Music Macro Language) の文字列を解釈して、
@@ -291,6 +291,8 @@
              (set! (~ tie ch 'flag)   #f)
              (set! (~ tie ch 'note)   0)
              (set! (~ tie ch 'length) 0))
+           ;; タイ記号(&)の前の 空白、タブ、改行 をスキップ
+           (set! i (skip-space mmlvec i))
            (case (~ mmlvec i)
              ;; タイまたはスラーのとき
              ((#\&)
@@ -470,6 +472,18 @@
                  (pop! (~ loop ch 'end))
                  (pop! (~ loop ch 'counter)))))))
           ))))
+
+  ;; MML内の空白、タブ、改行をスキップ(内部処理用)
+  ;; (最終の検索位置を返す)
+  (define (skip-space mmlvec i)
+    (let1 mmllen (vector-length mmlvec)
+      (while
+        (and (< i mmllen)
+             (case (~ mmlvec i)
+              ((#\space #\tab #\newline #\return)
+               (inc! i))
+              (else #f))))
+      i))
 
   ;; MML内の数値を取得(内部処理用)
   ;; (数値と最終の検索位置を、多値で返す)

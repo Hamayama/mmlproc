@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; mmlproc.scm
-;; 2014-11-3 v1.04
+;; 2014-11-5 v1.05
 ;;
 ;; ＜内容＞
 ;;   Gauche で MML(Music Macro Language) の文字列を解釈して、
@@ -110,23 +110,23 @@
   (define (make-progfunc prog)
     (case prog
       ;; 方形波
-      ((0)   (lambda (t phase) (if (> (sin phase) 0) 1 -1)))
+      ((0)   (lambda (t phase) (if (> (%sin phase) 0) 1 -1)))
       ;; 正弦波
-      ((1)   (lambda (t phase) (sin phase)))
+      ((1)   (lambda (t phase) (%sin phase)))
       ;; のこぎり波
       ((2)   (lambda (t phase) (- (* (mod phase (* 2 pi)) 1/pi) 1)))
       ;; 三角波
-      ((3)   (lambda (t phase) (* 2 (asin (sin phase)) 1/pi)))
+      ((3)   (lambda (t phase) (* 2 (%asin (%sin phase)) 1/pi)))
       ;; ホワイトノイズ
       ((4)   (lambda (t phase) (- (* (mt-random-real0 mr-twister) 2) 1)))
       ;; ピアノ(仮)
-      ((500) (lambda (t phase) (* 1.3 (if (> (sin phase) 0) 1 -1) (exp (* -5 t)))))
+      ((500) (lambda (t phase) (* 1.3 (if (> (%sin phase) 0) 1 -1) (%exp (* -5 t)))))
       ;; オルガン(仮)
-      ((501) (lambda (t phase) (* (if (> (sin phase) 0) 1 -1) 13 t (exp (* -5 t)))))
+      ((501) (lambda (t phase) (* (if (> (%sin phase) 0) 1 -1) 13 t (%exp (* -5 t)))))
       ;; ギター(仮)
-      ((502) (lambda (t phase) (* 5 (cos (+ phase (cos (* phase 0.5)) (cos (* phase 2)))) (exp (* -5 t)))))
+      ((502) (lambda (t phase) (* 5 (%cos (+ phase (%cos (* phase 0.5)) (%cos (* phase 2)))) (%exp (* -5 t)))))
       ;; 方形波
-      (else  (lambda (t phase) (if (> (sin phase) 0) 1 -1)))))
+      (else  (lambda (t phase) (if (> (%sin phase) 0) 1 -1)))))
 
   ;; 音符追加(内部処理用)
   (define (add-note ch note nlength1 nlength2 prog volume pass-no)
@@ -136,13 +136,10 @@
             (nlen1    0)   ; 音長  (単位は実時間(sec)xサンプリングレート(Hz))
             (nlen2    0)   ; 発音長(単位は実時間(sec)xサンプリングレート(Hz))
             (freq     0)   ; 音符の周波数(Hz)
-            ;(t        0)   ; 時間(sec)
-            ;(phase    0)   ; 位相(ラジアン)
-            ;(wave     0)   ; 波形(-1～1まで)
-            ;(fade     0)   ; フェードアウト割合(0-1まで)
             (phase-c  0)   ; 定数キャッシュ用
             (amp-c    0)   ; 定数キャッシュ用
             (pos-int  0)   ; 定数キャッシュ用
+            (len-int  0)   ; 定数キャッシュ用
             (rsample  0)   ; 定数キャッシュ用
             (rnlen2   0)   ; 定数キャッシュ用
             (progfunc #f)) ; 音色生成関数
@@ -152,35 +149,31 @@
         (set! rtime2   (get-real-time (+ (~ pos ch) nlength1)))
         (set! nlen1    (* mml-sample-rate (- rtime2 rtime1)))
         ;; 発音長計算
-        (set! nlen2    (if (> nlength1 0)
-                         (/. (* nlen1 nlength2) nlength1)
-                         0))
+        (set! nlen2    (if (> nlength1 0) (/. (* nlen1 nlength2) nlength1) 0))
         ;; 音符の周波数計算
-        (set! freq     (* 13.75 (expt 2 (/. (- note 9) 12))))
+        (set! freq     (* 13.75 (%expt 2 (/. (- note 9) 12))))
         ;; 定数を先に計算しておく
         (set! phase-c  (* 2 pi freq))
         (set! amp-c    (/. (/. (* 32767 volume) 127) max-ch))
         (set! pos-int  (floor->exact (* mml-sample-rate rtime1)))
-        ;(print pos-int " " (s16vector-length pcmdata))
+        (set! len-int  (floor->exact nlen1))
         (set! rsample  (/. 1 mml-sample-rate))
         (set! rnlen2   (/. 1 nlen2))
         ;; 音色生成関数を取得
         (set! progfunc (make-progfunc prog))
         ;; 音声データの値を計算
-        (do ((i 0 (+ i 1))
-             (pos-int pos-int (+ pos-int 1)))
-            ((>= i nlen1) #f)
-          (let* ((t     (* i rsample))                   ; 時間(sec)
-                 (phase (* phase-c t))                   ; 位相(ラジアン)
-                 (wave  (clamp (progfunc t phase) -1 1)) ; 波形(-1～1まで)
-                 (fade  (cond ((= nlen2 0)         1)    ; フェードアウト割合(0-1まで)
-                              ((< i (* 0.8 nlen2)) 1)
-                              ((< i nlen2)         (* 5 (- 1 (* i rnlen2))))
-                              (else                0))))
-            ;; (ここは実行回数が多いので、万能アクセサだと遅いみたい(4秒→1秒))
-            ;(set! (~ pcmdata pos-int) (+ (~ pcmdata pos-int) (floor->exact (* amp-c wave fade))))
-            (s16vector-set! pcmdata pos-int (+ (s16vector-ref pcmdata pos-int) (floor->exact (* amp-c wave fade))))
-            ))))
+        ($ s16vector-copy!   pcmdata pos-int
+           $ s16vector-add!  (uvector-alias <s16vector> pcmdata pos-int (+ pos-int len-int))
+           $ vector-tabulate len-int
+           (lambda (i)
+             (let* ((t     (* i rsample))                   ; 時間(sec)
+                    (phase (* phase-c t))                   ; 位相(ラジアン)
+                    (wave  (clamp (progfunc t phase) -1 1)) ; 波形(-1～1まで)
+                    (fade  (cond ((= nlen2 0)         1)    ; フェードアウト割合(0-1まで)
+                                 ((< i (* 0.8 nlen2)) 1)
+                                 ((< i nlen2)         (* 5 (- 1 (* i rnlen2))))
+                                 (else                0))))
+               (floor->exact (* amp-c wave fade)))))))
     ;; 音声データ位置を計算
     (set! (~ pos ch) (+ (~ pos ch) nlength1)))
 

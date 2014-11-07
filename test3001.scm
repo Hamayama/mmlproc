@@ -8,7 +8,7 @@
 (use gauche.uvector)
 (use gauche.time)
 
-;; 定数
+;; 初期化
 (define pcmdata #f)                 ; PCMデータ(s16vector)
 (define wavfile "testdata3001.wav") ; wavファイル名
 

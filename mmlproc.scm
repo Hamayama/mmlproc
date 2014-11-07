@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; mmlproc.scm
-;; 2014-11-6 v1.06
+;; 2014-11-7 v1.07
 ;;
 ;; ＜内容＞
 ;;   Gauche で MML(Music Macro Language) の文字列を解釈して、
@@ -25,7 +25,7 @@
 ;;
 ;; ＜注意事項＞
 ;;   (1)演奏1秒あたり22050個の音声データを計算するため けっこう時間がかかります。
-;;      (ほとんどの時間は add-note 手続きの do ループのところで費やしているので、
+;;      (ほとんどの時間は add-note 手続きの vector-tabulate のところで費やしているので、
 ;;       この部分を例えばC言語で計算するようにしたら 速くなるかもしれない)
 ;;
 (define-module mmlproc
@@ -533,7 +533,7 @@
         (set! mmlstr (string-append mmlstr (~ mmlch i))))
       ;; 「^」記号をタイと休符に置換
       (set! mmlstr (regexp-replace-all #/\^/ mmlstr "&r"))
-      ;; 末尾に無効なトークンを追加(安全のため)
+      ;; 末尾に無効な文字列を追加(安全のため)
       (set! mmlstr (string-append mmlstr "||||"))
       ;; MML文字列を返す
       mmlstr))

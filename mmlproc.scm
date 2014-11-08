@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; mmlproc.scm
-;; 2014-11-8 v1.08
+;; 2014-11-8 v1.09
 ;;
 ;; ＜内容＞
 ;;   Gauche で MML(Music Macro Language) の文字列を解釈して、
@@ -13,9 +13,9 @@
 ;;   (例えば (gauche-site-library-directory) で表示されるフォルダ等)
 ;;
 ;;   C言語の開発環境(WindowsではMinGW(32bit)のGCCが必要)があれば、
-;;   以下の手順でDLLを作成してインストールできます。
-;;   (Windowsではコマンドプロンプトでbashを起動して、
-;;    cdでmmlprocのフォルダに移動してから実行します)
+;;   以下の手順でDLLを作成してインストールすることもできます。
+;;   (Windowsではコマンドプロンプトでbashを起動して、cdでmmlprocのフォルダに
+;;    移動してから実行します)
 ;;
 ;;      ./configure     (Makefileを生成します)
 ;;      make            (コンパイルしてDLLを作成します)

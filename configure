@@ -20,7 +20,7 @@
 
 ;; Initialize configure.  This creates the global context, parses
 ;; command-line args and sets up default values.
-(cf-init "mmlproc" "1.08" "kyof9191@gmail.com")
+(cf-init "mmlproc" "1.09" "kyof9191@gmail.com")
 
 ;; Set up gauche related commands.  The commands are set by scanning
 ;; PATH.  You can override them by "GOSH=/my/gosh ./configure" etc.

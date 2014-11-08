@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; mmlproc.scm
-;; 2014-11-7 v1.07
+;; 2014-11-8 v1.08
 ;;
 ;; ＜内容＞
 ;;   Gauche で MML(Music Macro Language) の文字列を解釈して、
@@ -11,6 +11,18 @@
 ;; ＜インストール方法＞
 ;;   mmlproc.scm を Gauche でロード可能なフォルダにコピーします。
 ;;   (例えば (gauche-site-library-directory) で表示されるフォルダ等)
+;;
+;;   C言語の開発環境(WindowsではMinGW(32bit)のGCCが必要)があれば、
+;;   以下の手順でDLLを作成してインストールできます。
+;;   (Windowsではコマンドプロンプトでbashを起動して、
+;;    cdでmmlprocのフォルダに移動してから実行します)
+;;
+;;      ./configure     (Makefileを生成します)
+;;      make            (コンパイルしてDLLを作成します)
+;;      make install    (Gaucheのライブラリフォルダにインストールします)
+;;      make check      (テストを実行します)
+;;
+;;   DLLがあると高速に変換が行えるようになります。
 ;;
 ;; ＜使い方＞
 ;;   (use mmlproc)                       ; モジュールをロードします
@@ -23,10 +35,11 @@
 ;;   サンプリングレートは変数 mml-sample-rate で取得/設定できます。
 ;;   (デフォルトは22050(Hz)です)
 ;;
+;;   DLLがインストールされていれば、高速に変換が行えます。
+;;   DLLの有無は、mml-dll-loaded? でチェックできます。
+;;
 ;; ＜注意事項＞
-;;   (1)演奏1秒あたり22050個の音声データを計算するため けっこう時間がかかります。
-;;      (ほとんどの時間は add-note 手続きの vector-tabulate のところで費やしているので、
-;;       この部分を例えばC言語で計算するようにしたら 速くなるかもしれない)
+;;   (1)演奏1秒あたり22050個の音声データを計算するため それなりに時間がかかります。
 ;;
 (define-module mmlproc
   (use gauche.sequence) ; find-index用
@@ -36,10 +49,21 @@
   (use srfi-13)         ; string-downcase用
   (use binary.pack)
   (export
+    test-mmlproc
+    mml-dll-loaded?
     mml-sample-rate
     mml->pcm
     write-wav))
 (select-module mmlproc)
+
+;; DLLのロード
+(define dll-loaded
+  (guard (exc ((<error> exc) #f))
+    (dynamic-load "mmlproc")
+    #t))
+
+;; DLLがロードされているかのチェック
+(define (mml-dll-loaded?) dll-loaded)
 
 ;; 定数
 (define max-ch 8)              ; 最大チャンネル数(増やすと音が小さくなる)
@@ -106,7 +130,7 @@
       (set! rtime (+ rtime (/. (/. (* (- pos poslast) 60) 48) tempo)))
       rtime))
 
-  ;; 音色生成関数(内部処理用)
+  ;; 音色生成関数(内部処理用)(DLLありのときは未使用)
   (define (make-progfunc prog)
     (case prog
       ;; 方形波
@@ -131,49 +155,58 @@
   ;; 音符追加(内部処理用)
   (define (add-note ch note nlength1 nlength2 prog volume pass-no)
     (when (= pass-no 2)
-      (let ((rtime1   0)   ; 音符開始位置の実時間(sec)
-            (rtime2   0)   ; 音符終了位置の実時間(sec)
-            (nlen1    0)   ; 音長  (単位は実時間(sec)xサンプリングレート(Hz))
-            (nlen2    0)   ; 発音長(単位は実時間(sec)xサンプリングレート(Hz))
-            (freq     0)   ; 音符の周波数(Hz)
-            (phase-c  0)   ; 定数キャッシュ用
-            (amp-c    0)   ; 定数キャッシュ用
-            (pos-int  0)   ; 定数キャッシュ用
-            (len-int  0)   ; 定数キャッシュ用
-            (rsample  0)   ; 定数キャッシュ用
-            (rnlen2   0)   ; 定数キャッシュ用
-            (progfunc #f)) ; 音色生成関数
-        ;; 音長計算
-        ;; (音符の途中でテンポが変わることを考慮する)
-        (set! rtime1   (get-real-time (~ pos ch)))
-        (set! rtime2   (get-real-time (+ (~ pos ch) nlength1)))
-        (set! nlen1    (* mml-sample-rate (- rtime2 rtime1)))
-        ;; 発音長計算
-        (set! nlen2    (if (> nlength1 0) (/. (* nlen1 nlength2) nlength1) 0))
-        ;; 音符の周波数計算
-        (set! freq     (* 13.75 (%expt 2 (/. (- note 9) 12))))
-        ;; 定数を先に計算しておく
-        (set! phase-c  (* 2 pi freq))
-        (set! amp-c    (/. (/. (* 32767 volume) 127) max-ch))
-        (set! pos-int  (floor->exact (* mml-sample-rate rtime1)))
-        (set! len-int  (floor->exact nlen1))
-        (set! rsample  (/. 1 mml-sample-rate))
-        (set! rnlen2   (/. 1 nlen2))
-        ;; 音色生成関数を取得
-        (set! progfunc (make-progfunc prog))
-        ;; 音声データの値を計算
-        ($ s16vector-copy!   pcmdata pos-int
-           $ s16vector-add!  (uvector-alias <s16vector> pcmdata pos-int (+ pos-int len-int))
-           $ vector-tabulate len-int
-           (lambda (i)
-             (let* ((t     (* i rsample))                   ; 時間(sec)
-                    (phase (* phase-c t))                   ; 位相(ラジアン)
-                    (wave  (clamp (progfunc t phase) -1 1)) ; 波形(-1～1まで)
-                    (fade  (cond ((= nlen2 0)         1)    ; フェードアウト割合(0-1まで)
-                                 ((< i (* 0.8 nlen2)) 1)
-                                 ((< i nlen2)         (* 5 (- 1 (* i rnlen2))))
-                                 (else                0))))
-               (floor->exact (* amp-c wave fade)))))))
+      ;; DLLの有無で場合分け
+      (if (mml-dll-loaded?)
+        ;; DLLありのとき
+        (calc-pcmdata pcmdata mml-sample-rate max-ch
+                      note nlength1 nlength2 prog volume
+                      (get-real-time (~ pos ch))
+                      (get-real-time (+ (~ pos ch) nlength1)))
+        ;; DLLなしのとき
+        (begin
+          (let ((rtime1   0)   ; 音符開始位置の実時間(sec)
+                (rtime2   0)   ; 音符終了位置の実時間(sec)
+                (nlen1    0)   ; 音長  (単位は実時間(sec)xサンプリングレート(Hz))
+                (nlen2    0)   ; 発音長(単位は実時間(sec)xサンプリングレート(Hz))
+                (freq     0)   ; 音符の周波数(Hz)
+                (phase-c  0)   ; 定数キャッシュ用
+                (amp-c    0)   ; 定数キャッシュ用
+                (pos-int  0)   ; 定数キャッシュ用
+                (len-int  0)   ; 定数キャッシュ用
+                (rsample  0)   ; 定数キャッシュ用
+                (rnlen2   0)   ; 定数キャッシュ用
+                (progfunc #f)) ; 音色生成関数
+            ;; 音長計算
+            ;; (音符の途中でテンポが変わることを考慮する)
+            (set! rtime1   (get-real-time (~ pos ch)))
+            (set! rtime2   (get-real-time (+ (~ pos ch) nlength1)))
+            (set! nlen1    (* mml-sample-rate (- rtime2 rtime1)))
+            ;; 発音長計算
+            (set! nlen2    (if (> nlength1 0) (/. (* nlen1 nlength2) nlength1) 0))
+            ;; 音符の周波数計算
+            (set! freq     (* 13.75 (%expt 2 (/. (- note 9) 12))))
+            ;; 定数を先に計算しておく
+            (set! phase-c  (* 2 pi freq))
+            (set! amp-c    (/. (/. (* 32767 volume) 127) max-ch))
+            (set! pos-int  (floor->exact (* mml-sample-rate rtime1)))
+            (set! len-int  (floor->exact nlen1))
+            (set! rsample  (/. 1 mml-sample-rate))
+            (set! rnlen2   (/. 1 nlen2))
+            ;; 音色生成関数を取得
+            (set! progfunc (make-progfunc prog))
+            ;; 音声データの値を計算
+            ($ s16vector-copy!   pcmdata pos-int
+               $ s16vector-add!  (uvector-alias <s16vector> pcmdata pos-int (+ pos-int len-int))
+               $ vector-tabulate len-int
+               (lambda (i)
+                 (let* ((t     (* i rsample))                   ; 時間(sec)
+                        (phase (* phase-c t))                   ; 位相(ラジアン)
+                        (wave  (clamp (progfunc t phase) -1 1)) ; 波形(-1～1まで)
+                        (fade  (cond ((= nlen2 0)         1)    ; フェードアウト割合(0-1まで)
+                                     ((< i (* 0.8 nlen2)) 1)
+                                     ((< i nlen2)         (* 5 (- 1 (* i rnlen2))))
+                                     (else                0))))
+                   (floor->exact (* amp-c wave fade)))))))))
     ;; 音声データ位置を計算
     (set! (~ pos ch) (+ (~ pos ch) nlength1)))
 

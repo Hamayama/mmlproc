@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; mmlprocのテスト3(時間測定用)
-;; 2014-11-5
+;; 2014-11-8
 ;;
 (add-load-path "." :relative)
 (use mmlproc)
@@ -59,4 +59,10 @@
 ; real  10.438
 ; user  10.156
 ; sys    0.094
+
+;; (F)v1.08 C言語のDLLを使用 (v1.05から4倍くらい早くなった)
+;(time (set! pcmdata (mml->pcm "!c0 @500 [v120o3cdefgab>c< v50 o3ccccccc ...
+; real   2.672
+; user   2.656
+; sys    0.015
 

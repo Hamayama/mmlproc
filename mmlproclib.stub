@@ -1,0 +1,26 @@
+;;;
+;;; mmlproclib.stub
+;;;
+
+"
+#include \"mmlproc.h\"
+"
+
+;; The following entry is a dummy one.
+;; Replace it for your definitions.
+
+(define-cproc test-mmlproc () ::<const-cstring>
+  (result "mmlproc is working"))
+
+(define-cproc calc-pcmdata(pcmdata::<s16vector> sample-rate::<int> max-ch::<int>
+                           note::<int> nlength1::<double> nlength2::<double> prog::<int> volume::<double>
+                           rtime1::<double> rtime2::<double>) ::<int>
+  (result (calc_pcmdata_sub (cast (short*) (SCM_S16VECTOR_ELEMENTS pcmdata))
+                            (cast (int)    (SCM_S16VECTOR_SIZE pcmdata))
+                            sample-rate max-ch
+                            note nlength1 nlength2 prog volume
+                            rtime1 rtime2)))
+
+;; Local variables:
+;; mode: scheme
+;; end:

@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; mmlprocのテスト1
-;; 2014-11-5
+;; 2014-11-8
 ;;
 (add-load-path "." :relative)
 (use mmlproc)
@@ -9,8 +9,8 @@
 (use gauche.time)
 
 ;; 初期化
-(define pcmdata #f)             ; PCMデータ(s16vector)
-(define wavfile "testdata.wav") ; wavファイル名
+(define pcmdata #f)                 ; PCMデータ(s16vector)
+(define wavfile "testdata1001.wav") ; wavファイル名
 
 ;; MML文字列をPCMデータに変換
 (print "mml->pcm")

@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; mmlproc.scm
-;; 2014-11-8 v1.10
+;; 2014-11-8 v1.11
 ;;
 ;; ＜内容＞
 ;;   Gauche で MML(Music Macro Language) の文字列を解釈して、
@@ -37,6 +37,7 @@
 ;;
 ;;   DLLがインストールされていれば、高速にPCMデータへの変換が行えます。
 ;;   DLLの有無は、mml-dll-loaded? でチェックできます。
+;;   mml->pcm のオプション引数に #f を指定するとDLLを使用しません。
 ;;
 ;; ＜注意事項＞
 ;;   (1)演奏1秒あたり22050個の音声データを計算するため それなりに時間がかかります。
@@ -92,7 +93,7 @@
 
 
 ;; MML文字列をPCMデータ(s16vector)に変換する
-(define (mml->pcm mmlstr)
+(define (mml->pcm mmlstr :optional (usedll #t))
   (define mmlvec    #f)               ; MML(ベクタ)
   (define pcmdata   #f)               ; PCMデータ(s16vector)(これが戻り値になる)
   (define pos (make-vector max-ch 0)) ; 音声データ位置(ベクタ)(チャンネルごと)(単位は絶対音長(4分音符が48になる))
@@ -130,7 +131,7 @@
       (set! rtime (+ rtime (/. (/. (* (- pos poslast) 60) 48) tempo)))
       rtime))
 
-  ;; 音色生成関数(内部処理用)(DLLありのときは未使用)
+  ;; 音色生成関数(内部処理用)(DLL使用のときはこの手続きは使わない)
   (define (make-progfunc prog)
     (case prog
       ;; 方形波
@@ -155,14 +156,14 @@
   ;; 音符追加(内部処理用)
   (define (add-note ch note nlength1 nlength2 prog volume pass-no)
     (when (= pass-no 2)
-      ;; DLLの有無で場合分け
-      (if (mml-dll-loaded?)
-        ;; DLLありのとき
+      ;; DLLの使用有無で場合分け
+      (if (and usedll (mml-dll-loaded?))
+        ;; DLL使用のとき
         (calc-pcmdata pcmdata mml-sample-rate max-ch
                       note nlength1 nlength2 prog volume
                       (get-real-time (~ pos ch))
                       (get-real-time (+ (~ pos ch) nlength1)))
-        ;; DLLなしのとき
+        ;; DLL未使用のとき
         (begin
           (let ((rtime1   0)   ; 音符開始位置の実時間(sec)
                 (rtime2   0)   ; 音符終了位置の実時間(sec)

@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; mmlprocのテスト2
-;; 2014-11-5
+;; 2014-11-8
 ;;
 (add-load-path "." :relative)
 (use gauche.uvector)
@@ -12,14 +12,17 @@
 (use mmlproc)
 (test-module 'mmlproc)
 
-(define (wavmake wavfile mml)
-  (define pcmdata (mml->pcm mml))
+(define (wavmake wavfile mml :optional (usedll -1))
+  (define pcmdata #f)
+  (if (boolean? usedll)
+    (set! pcmdata (mml->pcm mml usedll))
+    (set! pcmdata (mml->pcm mml)))
   (call-with-output-file wavfile (cut write-wav pcmdata <>))
   (undefined))
 
 (test-section "mml->pcm & write-wav")
-(test* "tempo1"   (undefined) (wavmake "testdata2001.wav" "t120cdt80eft30g"))
-(test* "channel"  (undefined) (wavmake "testdata2002.wav" "!c0 >c<bagf !c7 cdefr"))
+(test* "tempo1"   (undefined) (wavmake "testdata2001.wav" "t120cdt80eft30g" #t))
+(test* "channel"  (undefined) (wavmake "testdata2002.wav" "!c0 >c<bagf !c7 cdefr" #f))
 (test* "prog"     (undefined) (wavmake "testdata2003.wav" "@0 cde @1 cde @2 cde @3 cde @4 cde @500 cde @501 cde @502 cde"))
 (test* "note1"    (undefined) (wavmake "testdata2004.wav" "c+8.de"))
 (test* "note2"    (undefined) (wavmake "testdata2005.wav" "c-%24.de"))

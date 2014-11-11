@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; mmlproc.scm
-;; 2014-11-8 v1.11
+;; 2014-11-11 v1.12
 ;;
 ;; ＜内容＞
 ;;   Gauche で MML(Music Macro Language) の文字列を解釈して、
@@ -13,16 +13,10 @@
 ;;   (例えば (gauche-site-library-directory) で表示されるフォルダ等)
 ;;
 ;;   C言語の開発環境(WindowsではMinGW(32bit)のGCCが必要)があれば、
-;;   以下の手順でDLLを作成してインストールすることもできます。
-;;   (Windowsではコマンドプロンプトでbashを起動して、cdでmmlprocのフォルダに
-;;    移動してから実行します)
-;;
-;;      ./configure     (Makefileを生成します)
-;;      make            (コンパイルしてDLLを作成します)
-;;      make install    (Gaucheのライブラリフォルダにインストールします)
-;;      make check      (テストを実行します)
-;;
-;;   DLLがあると高速にPCMデータへの変換が行えるようになります。
+;;   DLLを作成してインストールすることもできます。
+;;   DLLをインストールすると、高速にPCMデータへの変換が行えます。
+;;   詳細は、以下のURLを参照ください。
+;;   https://github.com/Hamayama/mmlproc
 ;;
 ;; ＜使い方＞
 ;;   (use mmlproc)                       ; モジュールをロードします
@@ -53,6 +47,7 @@
     test-mmlproc
     mml-dll-loaded?
     mml-sample-rate
+    mml-progfunc-table
     mml->pcm
     write-wav))
 (select-module mmlproc)
@@ -90,6 +85,28 @@
 ;;    end      ループ終了(リスト)
 ;;    counter  ループ回数(リスト)
 (define-class <loopinfo> () (begin end counter))
+
+
+;; 音色生成関数のハッシュテーブル(DLL使用のときは使わない)
+(define mml-progfunc-table
+  (hash-table 'eqv?
+    ;; 方形波
+    `(0   . ,(lambda (t phase) (if (> (%sin phase) 0) 1 -1)))
+    ;; 正弦波
+    `(1   . ,(lambda (t phase) (%sin phase)))
+    ;; のこぎり波
+    `(2   . ,(lambda (t phase) (- (* (mod phase (* 2 pi)) 1/pi) 1)))
+    ;; 三角波
+    `(3   . ,(lambda (t phase) (* 2 (%asin (%sin phase)) 1/pi)))
+    ;; ホワイトノイズ
+    `(4   . ,(lambda (t phase) (- (* (mt-random-real0 mr-twister) 2) 1)))
+    ;; ピアノ(仮)
+    `(500 . ,(lambda (t phase) (* 1.3 (if (> (%sin phase) 0) 1 -1) (%exp (* -5 t)))))
+    ;; オルガン(仮)
+    `(501 . ,(lambda (t phase) (* (if (> (%sin phase) 0) 1 -1) 13 t (%exp (* -5 t)))))
+    ;; ギター(仮)
+    `(502 . ,(lambda (t phase) (* 5 (%cos (+ phase (%cos (* phase 0.5)) (%cos (* phase 2)))) (%exp (* -5 t)))))
+    ))
 
 
 ;; MML文字列をPCMデータ(s16vector)に変換する
@@ -130,28 +147,6 @@
       ;; 実時間を計算
       (set! rtime (+ rtime (/. (/. (* (- pos poslast) 60) 48) tempo)))
       rtime))
-
-  ;; 音色生成関数(内部処理用)(DLL使用のときはこの手続きは使わない)
-  (define (make-progfunc prog)
-    (case prog
-      ;; 方形波
-      ((0)   (lambda (t phase) (if (> (%sin phase) 0) 1 -1)))
-      ;; 正弦波
-      ((1)   (lambda (t phase) (%sin phase)))
-      ;; のこぎり波
-      ((2)   (lambda (t phase) (- (* (mod phase (* 2 pi)) 1/pi) 1)))
-      ;; 三角波
-      ((3)   (lambda (t phase) (* 2 (%asin (%sin phase)) 1/pi)))
-      ;; ホワイトノイズ
-      ((4)   (lambda (t phase) (- (* (mt-random-real0 mr-twister) 2) 1)))
-      ;; ピアノ(仮)
-      ((500) (lambda (t phase) (* 1.3 (if (> (%sin phase) 0) 1 -1) (%exp (* -5 t)))))
-      ;; オルガン(仮)
-      ((501) (lambda (t phase) (* (if (> (%sin phase) 0) 1 -1) 13 t (%exp (* -5 t)))))
-      ;; ギター(仮)
-      ((502) (lambda (t phase) (* 5 (%cos (+ phase (%cos (* phase 0.5)) (%cos (* phase 2)))) (%exp (* -5 t)))))
-      ;; 方形波
-      (else  (lambda (t phase) (if (> (%sin phase) 0) 1 -1)))))
 
   ;; 音符追加(内部処理用)
   (define (add-note ch note nlength1 nlength2 prog volume pass-no)
@@ -194,7 +189,7 @@
             (set! rsample  (/. 1 mml-sample-rate))
             (set! rnlen2   (/. 1 nlen2))
             ;; 音色生成関数を取得
-            (set! progfunc (make-progfunc prog))
+            (set! progfunc (hash-table-get mml-progfunc-table prog (hash-table-get mml-progfunc-table 0)))
             ;; 音声データの値を計算
             ($ s16vector-copy!   pcmdata pos-int
                $ s16vector-add!  (uvector-alias <s16vector> pcmdata pos-int (+ pos-int len-int))

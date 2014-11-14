@@ -147,6 +147,10 @@
    https://gist.github.com/koguro/297312  
    (wavファイル出力の部分を参考にしました)
 
+2. MML音楽演奏サンプル  
+   https://github.com/Hamayama/c-wrapper-mg/tree/master/examples_mingw/mml  
+   (本モジュールを使用)
+
 
 ## 環境等
 - 以下の環境で動作を確認しました。

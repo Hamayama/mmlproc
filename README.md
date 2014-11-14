@@ -149,7 +149,7 @@
 
 2. MML音楽演奏サンプル  
    https://github.com/Hamayama/c-wrapper-mg/tree/master/examples_mingw/mml  
-   (本モジュールを使用)
+   (本モジュールを使用しています)
 
 
 ## 環境等

@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; mmlprocのテスト4(音色生成関数の追加)
-;; 2014-11-11
+;; 2014-11-14
 ;;
 (add-load-path "." :relative)
 (use mmlproc)
@@ -22,10 +22,11 @@
 (hash-table-put!
  mml-progfunc-table    ; 音色生成関数のハッシュテーブル
  900                   ; 音色番号
- (lambda (t phase)     ; 音色生成関数(FM変調 x 指数関数)
-   (let ((ac     1)    ;   キャリア振幅
-         (am     1)    ;   モジュレータ振幅
-         (fratio 3.5)) ;   周波数比(=モジュレータ周波数/キャリア周波数)
+ (lambda (t phase)     ; 音色生成関数(t:時間, phase:位相)
+                       ;   FM変調と指数関数エンベロープの例
+   (let ((ac     1)    ;     キャリア振幅
+         (am     1)    ;     モジュレータ振幅
+         (fratio 3.5)) ;     周波数比(=モジュレータ周波数/キャリア周波数)
      (* ac (%sin (+ phase (* am (%sin (* phase fratio))))) (%exp (* -5 t))))))
 
 

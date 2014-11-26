@@ -10,13 +10,15 @@
 - mmlproc.scm を Gauche でロード可能なフォルダにコピーします。  
   (例えば (gauche-site-library-directory) で表示されるフォルダ等)
 
-- C言語の開発環境(WindowsではMinGW(32bit)のGCCが必要)があれば、  
-  以下の手順でDLLを作成してインストールすることもできます。  
-  (Windowsではコマンドプロンプトでbashを起動して、cdでmmlprocのフォルダに  
-   移動してから実行します)
+- C言語の開発環境があれば、以下の手順でDLLを作成してインストールすることもできます。  
+  (WindowsではMinGW(32bit)の開発環境がインストールされている必要があります。  
+   以下のページを参考にインストールを実施ください。  
+   https://gist.github.com/Hamayama/362f2eb14ae26d971ca4 )  
+  (Windowsではコマンドプロンプトでbashを起動して、cdでmmlprocのフォルダに移動して  
+   から以下を実行します)
   ```
-    ./configure    # Makefileを生成します(初回のみ実施が必要です)
-    make           # コンパイルしてDLLを作成します
+    ./configure    # Makefile等を生成します
+    make           # コンパイルを実行します
     make install   # Gaucheのライブラリフォルダにインストールします
     make check     # テストを実行します
   ```

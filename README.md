@@ -15,10 +15,10 @@
   (Windowsではコマンドプロンプトでbashを起動して、cdでmmlprocのフォルダに  
    移動してから実行します)
   ```
-     ./configure     (Makefileを生成します)
-     make            (コンパイルしてDLLを作成します)
-     make install    (Gaucheのライブラリフォルダにインストールします)
-     make check      (テストを実行します)
+    ./configure    # Makefileを生成します(初回のみ実施が必要です)
+    make           # コンパイルしてDLLを作成します
+    make install   # Gaucheのライブラリフォルダにインストールします
+    make check     # テストを実行します
   ```
   DLLがあると高速にPCMデータへの変換が行えるようになります。
 
@@ -178,6 +178,7 @@
 - 2014-11-11 v1.12 音色生成関数のハッシュテープルmml-progfunc-tableをexportした。  
                    これを利用して音色生成関数をユーザが追加できる(test4001.scmを参照)。  
                    ただし、DLL未使用(mml->pcmのオプション引数に#f指定)でしか使えない。
+- 2014-11-26 v1.13 コメント修正のみ
 
 
-(2014-11-14)
+(2014-11-26)

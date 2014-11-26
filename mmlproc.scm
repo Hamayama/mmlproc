@@ -1,40 +1,15 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; mmlproc.scm
-;; 2014-11-11 v1.12
+;; 2014-11-26 v1.13
 ;;
 ;; ＜内容＞
 ;;   Gauche で MML(Music Macro Language) の文字列を解釈して、
 ;;   PCMデータに変換するためのモジュールです。
 ;;   結果をwavファイルとして出力可能です。
 ;;
-;; ＜インストール方法＞
-;;   mmlproc.scm を Gauche でロード可能なフォルダにコピーします。
-;;   (例えば (gauche-site-library-directory) で表示されるフォルダ等)
-;;
-;;   C言語の開発環境(WindowsではMinGW(32bit)のGCCが必要)があれば、
-;;   DLLを作成してインストールすることもできます。
-;;   DLLをインストールすると、高速にPCMデータへの変換が行えます。
-;;   詳細は、以下のURLを参照ください。
+;;   詳細については、以下のページを参照ください。
 ;;   https://github.com/Hamayama/mmlproc
-;;
-;; ＜使い方＞
-;;   (use mmlproc)                       ; モジュールをロードします
-;;   (define pcmdata (mml->pcm "cdefg")) ; MML文字列をPCMデータ(s16vector)に
-;;                                       ; 変換します
-;;   (call-with-output-file "test.wav" (cut write-wav pcmdata <>))
-;;                                       ; PCMデータ(s16vector)をwavファイルに
-;;                                       ; 変換して出力ポートに書き出します
-;;
-;;   サンプリングレートは変数 mml-sample-rate で取得/設定できます。
-;;   (デフォルトは22050(Hz)です)
-;;
-;;   DLLがインストールされていれば、高速にPCMデータへの変換が行えます。
-;;   DLLの有無は、mml-dll-loaded? でチェックできます。
-;;   mml->pcm のオプション引数に #f を指定するとDLLを使用しません。
-;;
-;; ＜注意事項＞
-;;   (1)演奏1秒あたり22050個の音声データを計算するため それなりに時間がかかります。
 ;;
 (define-module mmlproc
   (use gauche.sequence) ; find-index用

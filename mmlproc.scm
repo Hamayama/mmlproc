@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; mmlproc.scm
-;; 2014-11-26 v1.13
+;; 2015-1-18 v1.14
 ;;
 ;; ＜内容＞
 ;;   Gauche で MML(Music Macro Language) の文字列を解釈して、
@@ -495,7 +495,7 @@
     (let ((mmllen (vector-length mmlvec))
           (start  i)
           (done   #f))
-      (if (not (digit->integer (~ mmlvec i)))
+      (if (or (>= i mmllen) (not (digit->integer (~ mmlvec i))))
         (values errval i)
         (begin
           (inc! i)
@@ -522,7 +522,9 @@
         (set! c (~ mmlvec i))
         (inc! i)
         ;; チャンネル切替のとき
-        (when (and (eqv? c #\!) (eqv? (~ mmlvec i) #\c))
+        (when (and (eqv? c #\!)
+                   (< i mmllen)
+                   (eqv? (~ mmlvec i) #\c))
           (inc! i)
           (receive (val i2) (get-value mmlvec i 0)
             (set! (~ mmlch ch) (string-append (~ mmlch ch) (string-copy mmlstr start (- i 2))))

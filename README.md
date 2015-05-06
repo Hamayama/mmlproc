@@ -23,6 +23,10 @@
     make install   # Gaucheのライブラリフォルダにインストールします
     make check     # テストを実行します
   ```
+  (注意) Windowsでコンパイルエラーになる場合は、以下のページの  
+  「5. MinGW (32bit) のファイルの修正」の内容を確認してみてください。  
+  https://gist.github.com/Hamayama/19d7e779cec0480af0cf  
+  
   (注意) Windowsの場合、環境によっては make install を実行すると、  
   「*** ERROR: mkstemp failed」というエラーが発生します。  
   このエラーは c:\Program Files (x86) のフォルダに 書き込み権限がないとき等に発生します。  
@@ -163,7 +167,7 @@
 ## 環境等
 - OS
   - Windows XP Home SP3
-  - Windows 8 (64bit)
+  - Windows 8.1 (64bit)
 - 言語
   - Gauche v0.9.4
 
@@ -189,4 +193,4 @@
 - 2015-1-18  v1.14 エラーチェック追加
 
 
-(2015-2-21)
+(2015-5-7)

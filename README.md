@@ -157,10 +157,13 @@
    https://gist.github.com/koguro/297312  
    (wavファイル出力の部分を参考にしました)
 
-2. MML音楽演奏サンプル  
+2. c-wrapperのMML音楽演奏サンプル  
    https://github.com/Hamayama/c-wrapper-mg/tree/master/examples_mingw/mml  
    (本モジュールを使用しています)
 
+3. Gauche-alのMML音楽演奏サンプル  
+   https://github.com/Hamayama/Gauche-al-mg/tree/master/example/mml  
+   (本モジュールを使用しています)
 
 ## 環境等
 - OS
@@ -191,4 +194,4 @@
 - 2015-1-18  v1.14 エラーチェック追加
 
 
-(2015-10-12)
+(2015-12-24)

@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; mmlproc.scm
-;; 2015-1-18 v1.14
+;; 2016-3-31 v1.15
 ;;
 ;; ＜内容＞
 ;;   Gauche で MML(Music Macro Language) の文字列を解釈して、
@@ -24,7 +24,8 @@
     mml-sample-rate
     mml-progfunc-table
     mml->pcm
-    write-wav))
+    write-wav
+    get-wav-size))
 (select-module mmlproc)
 
 ;; DLLのロード
@@ -593,4 +594,9 @@
         :output port)
   ;; データの書き出し
   (write-block pcmdata port 0 -1 'little-endian))
+
+;; wavファイルのサイズを取得する
+(define (get-wav-size pcmdata)
+  (+ (* (s16vector-length pcmdata) 2) (* 11 4)))
+
 

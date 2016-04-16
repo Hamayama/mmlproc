@@ -20,7 +20,7 @@
 
 ;; Initialize configure.  This creates the global context, parses
 ;; command-line args and sets up default values.
-(cf-init "mmlproc" "1.13" "kyof9191@gmail.com")
+(cf-init "mmlproc" "1.16" "fkyo0985@gmail.com")
 
 ;; Set up gauche related commands.  The commands are set by scanning
 ;; PATH.  You can override them by "GOSH=/my/gosh ./configure" etc.
@@ -35,6 +35,13 @@
 
 ;; Some common parameters
 (cf-subst 'default_prefix (gauche-config "--prefix"))
+
+(cf-subst 'DEFAULT_CFLAGS (gauche-config "--default-cflags"))
+(cf-subst 'DEF_UNICODE
+          (cond-expand
+           [gauche.os.windows
+            (if (eq? (gauche-character-encoding) 'utf-8) "-DUNICODE" "")]
+           [else ""]))
 
 (cf-subst 'SOEXT  (gauche-config "--so-suffix"))
 (cf-subst 'OBJEXT (gauche-config "--object-suffix"))

@@ -2,10 +2,10 @@
  * mmlproc.c
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
 #include "mmlproc.h"
+//#include <stdio.h>
+//#include <stdlib.h>
+#include <math.h>
 
 /*
  * The following function is a dummy one; replace it for
@@ -17,6 +17,8 @@ ScmObj test_mmlproc(void)
     return SCM_MAKE_STR("mmlproc is working");
 }
 
+
+// PCMデータ計算
 int calc_pcmdata_sub(short* pcmdata, int pcmdata_len, int sample_rate, int max_ch,
                      int note, double nlength1, double nlength2, int prog, double volume,
                      double rtime1, double rtime2) {
@@ -90,6 +92,7 @@ int calc_pcmdata_sub(short* pcmdata, int pcmdata_len, int sample_rate, int max_c
     }
     return 0;
 }
+
 
 /*
  * Module initialization function.

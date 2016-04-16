@@ -16,6 +16,8 @@ GAUCHE_CONFIG  = "@GAUCHE_CONFIG@"
 GAUCHE_PACKAGE = "@GAUCHE_PACKAGE@"
 INSTALL        = "@GAUCHE_INSTALL@" -C
 
+CFLAGS = @DEFAULT_CFLAGS@ @DEF_UNICODE@
+
 # Other parameters
 SOEXT  = @SOEXT@
 OBJEXT = @OBJEXT@
@@ -44,7 +46,9 @@ all : $(TARGET)
 
 mmlproc.$(SOEXT): $(mmlproc_SRCS)
 	$(GAUCHE_PACKAGE) compile \
-	  --local=$(LOCAL_PATHS) --verbose mmlproc $(mmlproc_SRCS)
+	  --local=$(LOCAL_PATHS)  \
+	  --cflags="$(CFLAGS)"    \
+	  --verbose mmlproc $(mmlproc_SRCS)
 
 check : all
 	@rm -f test.log

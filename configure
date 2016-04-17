@@ -39,8 +39,7 @@
 (cf-subst 'DEFAULT_CFLAGS (gauche-config "--default-cflags"))
 (cf-subst 'DEF_UNICODE
           (cond-expand
-           [gauche.os.windows
-            (if (eq? (gauche-character-encoding) 'utf-8) "-DUNICODE" "")]
+           [(and gauche.os.windows gauche.ces.utf8) "-DUNICODE"]
            [else ""]))
 
 (cf-subst 'SOEXT  (gauche-config "--so-suffix"))

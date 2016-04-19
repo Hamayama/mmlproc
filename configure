@@ -4,6 +4,9 @@
 
 (use gauche.configure)
 
+;; Disable environment variables
+(with-module gauche.configure (define (cf-arg-var symbol) #f))
+
 ;; Define extra --with-PACKAGE and --enable-FEATURE options.
 ;; These should come before cf-init so that cf-init can construct
 ;; proper usage string.
@@ -36,7 +39,12 @@
 ;; Some common parameters
 (cf-subst 'default_prefix (gauche-config "--prefix"))
 
-(cf-subst 'DEFAULT_CFLAGS (gauche-config "--default-cflags"))
+(unless (cf-have-subst? 'CFLAGS)
+  (cf-subst 'CFLAGS (gauche-config "--default-cflags")))
+(unless (cf-have-subst? 'CPPFLAGS) (cf-subst 'CPPFLAGS ""))
+(unless (cf-have-subst? 'LDFLAGS)  (cf-subst 'LDFLAGS  ""))
+(unless (cf-have-subst? 'LIBS)     (cf-subst 'LIBS     ""))
+
 (cf-subst 'DEF_UNICODE
           (cond-expand
            [(and gauche.os.windows gauche.ces.utf8) "-DUNICODE"]

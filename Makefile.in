@@ -16,7 +16,10 @@ GAUCHE_CONFIG  = "@GAUCHE_CONFIG@"
 GAUCHE_PACKAGE = "@GAUCHE_PACKAGE@"
 INSTALL        = "@GAUCHE_INSTALL@" -C
 
-CFLAGS = @DEFAULT_CFLAGS@ @DEF_UNICODE@
+CFLAGS   = @CFLAGS@
+CPPFLAGS = @CPPFLAGS@ @DEF_UNICODE@
+LDFLAGS  = @LDFLAGS@
+LIBS     = @LIBS@
 
 # Other parameters
 SOEXT  = @SOEXT@
@@ -45,9 +48,9 @@ mmlproc_SRCS = $(srcdir)/mmlproc.c $(srcdir)/mmlproclib.stub
 all : $(TARGET)
 
 mmlproc.$(SOEXT): $(mmlproc_SRCS)
-	$(GAUCHE_PACKAGE) compile \
-	  --local=$(LOCAL_PATHS)  \
-	  --cflags="$(CFLAGS)"    \
+	$(GAUCHE_PACKAGE) compile  --local=$(LOCAL_PATHS) \
+	  --cppflags="$(CPPFLAGS)" --cflags="$(CFLAGS)"   \
+	  --ldflags="$(LDFLAGS)"   --libs="$(LIBS)"       \
 	  --verbose mmlproc $(mmlproc_SRCS)
 
 check : all
@@ -74,5 +77,5 @@ distclean : clean
 	rm -rf $(CONFIG_GENERATED)
 
 maintainer-clean : clean
-	rm -rf $(CONFIG_GENERATED) VERSION
+	rm -rf $(CONFIG_GENERATED)  VERSION
 

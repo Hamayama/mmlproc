@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; mmlproc.scm
-;; 2016-4-16 v1.16
+;; 2016-10-14 v1.17
 ;;
 ;; ＜内容＞
 ;;   Gauche で MML(Music Macro Language) の文字列を解釈して、
@@ -508,14 +508,13 @@
 
   ;; MML文字列の前処理(内部処理用)
   (define (preprocess mmlstr)
-    (let* ((mmlvec (string->vector mmlstr))
+    (let* ((mmlstr (string-downcase mmlstr)) ; MMLを小文字に変換
+           (mmlvec (string->vector mmlstr))
            (mmllen (vector-length mmlvec))
            (c      0)
            (start  0)
            (ch     0)
            (mmlch  (make-vector max-ch "")))
-      ;; MMLを小文字に変換
-      (set! mmlstr (string-downcase mmlstr))
       ;; MMLをチャンネルごとに分解
       (do ((i 0 i))
           ((>= i mmllen) #f)

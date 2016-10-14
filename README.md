@@ -10,15 +10,15 @@
 - mmlproc.scm を Gauche でロード可能なフォルダにコピーします。  
   (例えば (gauche-site-library-directory) で表示されるフォルダ等)
 
-- C言語の開発環境があれば、以下の手順でDLLを作成してインストールすることもできます。  
-  DLLがあると高速にPCMデータへの変換が行えるようになります。
+- C 言語の開発環境があれば、以下の手順で DLL を作成してインストールすることもできます。  
+  DLL があると高速に PCM データへの変換が行えるようになります。
   ```
-    ./configure    # Makefile等を生成します
-    make           # コンパイルを実行します
-    make install   # Gaucheのライブラリフォルダにインストールします
-    make check     # テストを実行します
+    ./configure   # Makefile等を生成します
+    make          # コンパイルを実行します
+    make install  # Gaucheのライブラリフォルダにインストールします
+    make check    # テストを実行します
   ```
-  ＜WindowsでDLLを作成する場合のインストール方法＞
+  ＜Windows で DLL を作成する場合のインストール方法＞
   - 以下のページの「2.インストール方法」で、msicon を mmlproc に読み替えて実施ください。
     https://github.com/Hamayama/msicon
 
@@ -33,18 +33,18 @@
                                       ; 変換して出力ポートに書き出します
 
   サンプリングレートは変数 mml-sample-rate で取得/設定できます。
-  (デフォルトは22050(Hz)です)
+  (デフォルトは 22050 (Hz) です)
 
-  DLLがインストールされていれば、高速にPCMデータへの変換が行えます。
-  DLLがロードされているかどうかは、mml-dll-loaded? でチェックできます。
-  mml->pcm のオプション引数に #f を指定するとDLLを使用しません。
+  DLL がインストールされていれば、高速に PCM データへの変換が行えます。
+  DLL がロードされているかどうかは、mml-dll-loaded? でチェックできます。
+  mml->pcm のオプション引数に #f を指定すると DLL を使用しません。
 ```
 
 
-## MML(Music Macro Language)について
-- MMLは "t120 !c0 @0 v120 cdefg" のように文字列で音楽を記述します。  
-  本モジュールで使用可能なMMLの命令は、以下の通りです。  
-  (MMLには方言が多数あり、本モジュールも独自文法になっています)  
+## MML (Music Macro Language) について
+- MML は "t120 !c0 @0 v120 cdefg" のように文字列で音楽を記述します。  
+  本モジュールで使用可能な MML の命令は、以下の通りです。  
+  (MML には方言が多数あり、本モジュールも独自文法になっています)  
   アルファベット、数字、記号は、すべて半角です。  
   アルファベットの大文字小文字の区別はありません。  
   割り当てのない記号や空白は、無視されます。
@@ -139,29 +139,29 @@
 
 
 ## 注意事項
-1. 演奏1秒あたり22050個の音声データを計算するため それなりに時間がかかります。
+1. 演奏 1 秒あたり 22050 個の音声データを計算するため それなりに時間がかかります。
 
 
 ## 参考情報
-1. Schemeコードバトン  
+1. Scheme コードバトン  
    https://gist.github.com/koguro/297312  
-   (wavファイル出力の部分を参考にしました)
+   (wav ファイル出力の部分を参考にしました)
 
-2. c-wrapperのMML音楽演奏サンプル  
+2. c-wrapper の MML 音楽演奏サンプル  
    https://github.com/Hamayama/c-wrapper-mg/tree/master/examples_mingw/mml  
    (本モジュールを使用しています)
 
-3. Gauche-alのMML音楽演奏サンプル  
+3. Gauche-al の MML 音楽演奏サンプル  
    https://github.com/Hamayama/Gauche-al-mg/tree/master/example/mml  
    (本モジュールを使用しています)
 
 ## 環境等
 - OS
-  - Windows XP Home SP3
   - Windows 8.1 (64bit)
+  - Windows XP Home SP3
 - 言語
+  - Gauche v0.9.5
   - Gauche v0.9.4
-  - Gauche v0.9.5_pre1
 
 ## 履歴
 - 2014-11-1  v1.00 (初版)
@@ -179,12 +179,14 @@
 - 2014-11-8  v1.10 コメント修正のみ
 - 2014-11-8  v1.11 mml->pcmのオプション引数usedllを追加
 - 2014-11-11 v1.12 音色生成関数のハッシュテープルmml-progfunc-tableをexportした。  
-                   これを利用して音色生成関数をユーザが追加できる(test4001.scmを参照)。  
-                   ただし、DLL未使用(mml->pcmのオプション引数に#f指定)でしか使えない。
+  これを利用して音色生成関数をユーザが追加できる(test4001.scmを参照)。  
+  ただし、DLL未使用(mml->pcmのオプション引数に#f指定)でしか使えない。
 - 2014-11-26 v1.13 コメント修正のみ
 - 2015-1-18  v1.14 エラーチェック追加
 - 2016-3-31  v1.15 get-wav-size手続きを追加
 - 2016-4-16  v1.16 コメント追加等
+- 2016-10-14 v1.17 README修正(Gauche v0.9.5 対応)  
+  MMLの小文字変換処理修正
 
 
-(2016-4-16)
+(2016-10-14)

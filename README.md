@@ -1,7 +1,7 @@
 # mmlproc
 
 ## 概要
-- Gauche で MML(Music Macro Language) の文字列を解釈して、  
+- Gauche で MML (Music Macro Language) の文字列を解釈して、  
   PCMデータに変換するためのモジュールです。  
   結果をwavファイルとして出力可能です。
 
@@ -10,7 +10,7 @@
 - mmlproc.scm を Gauche でロード可能なフォルダにコピーします。  
   (例えば (gauche-site-library-directory) で表示されるフォルダ等)
 
-- C 言語の開発環境があれば、以下の手順で DLL を作成してインストールすることもできます。  
+- C言語の開発環境があれば、以下の手順で DLL を作成してインストールすることもできます。  
   DLL があると高速に PCM データへの変換が行えるようになります。
   ```
     ./configure   # Makefile等を生成します
@@ -189,4 +189,4 @@
   MMLの小文字変換処理修正
 
 
-(2016-10-14)
+(2016-10-23)

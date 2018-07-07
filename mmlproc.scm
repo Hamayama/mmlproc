@@ -1,10 +1,10 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; mmlproc.scm
-;; 2016-10-14 v1.17
+;; 2018-7-7 v1.18
 ;;
 ;; ＜内容＞
-;;   Gauche で MML(Music Macro Language) の文字列を解釈して、
+;;   Gauche で MML (Music Macro Language) の文字列を解釈して、
 ;;   PCMデータに変換するためのモジュールです。
 ;;   結果をwavファイルとして出力可能です。
 ;;

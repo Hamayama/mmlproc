@@ -19,7 +19,7 @@
     make check    # テストを実行します
   ```
   ＜Windows で DLL を作成する場合のインストール方法＞
-  - 以下のページの「2.インストール方法」で、msicon を mmlproc に読み替えて実施ください。
+  - 以下のページの「インストール方法」の説明で、msicon を mmlproc に読み替えて実施ください。
     https://github.com/Hamayama/msicon
 
 
@@ -160,6 +160,7 @@
   - Windows 8.1 (64bit)
   - Windows XP Home SP3
 - 言語
+  - Gauche v0.9.6
   - Gauche v0.9.5
   - Gauche v0.9.4
 
@@ -185,8 +186,9 @@
 - 2015-1-18  v1.14 エラーチェック追加
 - 2016-3-31  v1.15 get-wav-size手続きを追加
 - 2016-4-16  v1.16 コメント追加等
-- 2016-10-14 v1.17 README修正(Gauche v0.9.5 対応)  
+- 2016-10-14 v1.17 README修正(Gauche v0.9.5 で動作確認)  
   MMLの小文字変換処理修正
+- 2018-7-7   v1.18 コメント修正のみ(Gauche v0.9.6 で動作確認)
 
 
-(2016-10-23)
+(2018-7-7)
